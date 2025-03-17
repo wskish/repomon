@@ -11,19 +11,31 @@ class GitMonitor {
     this.watcher = null;
     this.isGitRepo = false;
     
-    // Check if path is a git repository
-    this.git.checkIsRepo()
-      .then(isRepo => {
-        this.isGitRepo = isRepo;
-        if (!isRepo) {
-          console.error('The specified path is not a Git repository');
-        } else {
-          console.log(`Confirmed valid Git repository at ${repoPath}`);
-        }
-      })
-      .catch(err => {
-        console.error('Error checking if path is a git repository:', err);
-      });
+    // Check if path exists
+    if (!fs.existsSync(repoPath)) {
+      console.error(`Repository path does not exist: ${repoPath}`);
+      return;
+    }
+    
+    // Check if .git directory exists directly
+    if (fs.existsSync(path.join(repoPath, '.git'))) {
+      console.log(`Found .git directory at ${repoPath}`);
+      this.isGitRepo = true;
+    } else {
+      // Fallback to Git's own check
+      this.git.checkIsRepo()
+        .then(isRepo => {
+          this.isGitRepo = isRepo;
+          if (!isRepo) {
+            console.error('The specified path is not a Git repository');
+          } else {
+            console.log(`Confirmed valid Git repository at ${repoPath}`);
+          }
+        })
+        .catch(err => {
+          console.error('Error checking if path is a git repository:', err);
+        });
+    }
   }
   
   async getStatus() {
@@ -48,18 +60,55 @@ class GitMonitor {
             if (status.created.includes(file) || status.not_added.includes(file)) {
               // For new/untracked files, show the entire file as added
               try {
-                const content = fs.readFileSync(path.join(this.repoPath, file), 'utf8');
-                diff = `diff --git a/${file} b/${file}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n${content.split('\n').map(line => `+${line}`).join('\n')}`;
+                const filePath = path.join(this.repoPath, file);
+                
+                // Check if it's a directory
+                const stats = fs.statSync(filePath);
+                if (stats.isDirectory()) {
+                  diff = `diff --git a/${file} b/${file}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,1 @@\n+<Directory: ${file}>\n`;
+                } else {
+                  // It's a regular file
+                  const content = fs.readFileSync(filePath, 'utf8');
+                  diff = `diff --git a/${file} b/${file}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n${content.split('\n').map(line => `+${line}`).join('\n')}`;
+                }
               } catch (readErr) {
                 console.error(`Error reading file ${file}:`, readErr);
                 diff = `Unable to read file: ${readErr.message}`;
               }
             } else if (status.deleted.includes(file)) {
               // For deleted files, get diff from git
-              diff = await this.git.diff(['--', file]);
+              try {
+                diff = await this.git.diff(['--diff-algorithm=histogram', '--', file]);
+              } catch (diffErr) {
+                console.error(`Error getting diff for deleted file ${file}:`, diffErr);
+                diff = `diff --git a/${file} b/${file}\ndeleted file mode 100644\nindex 0000000..0000000\n--- a/${file}\n+++ /dev/null\n@@ -1 +0,0 @@\n-<File deleted: ${file}>\n`;
+              }
             } else {
-              // For modified files, get diff from git
-              diff = await this.git.diff(['--', file]);
+              // For modified files, try to get diff
+              try {
+                // Check if it's a binary file
+                const filePath = path.join(this.repoPath, file);
+                if (fs.existsSync(filePath)) {
+                  const stats = fs.statSync(filePath);
+                  
+                  if (stats.isDirectory()) {
+                    diff = `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-<Directory>\n+<Directory: modified>\n`;
+                  } else {
+                    // Try to do a git diff first
+                    try {
+                      diff = await this.git.diff(['--diff-algorithm=histogram', '--', file]);
+                    } catch (diffErr) {
+                      // If git diff fails (maybe binary file), use a placeholder
+                      diff = `diff --git a/${file} b/${file}\nmodified file mode 100644\nindex 0000000..0000000\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-<File content before>\n+<File modified: ${file}>\n`;
+                    }
+                  }
+                } else {
+                  diff = `diff --git a/${file} b/${file}\nindex 0000000..0000000\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-<File no longer exists>\n+<File reported as modified but not found>\n`;
+                }
+              } catch (err) {
+                console.error(`Error processing modified file ${file}:`, err);
+                diff = `Failed to process ${file}: ${err.message}`;
+              }
             }
             return {
               file,
@@ -89,11 +138,39 @@ class GitMonitor {
     }
   }
   
-  startMonitoring(callback) {
+  async startMonitoring(callback) {
+    // If isGitRepo is false, do one more check in case constructor's async check hasn't finished
+    if (!this.isGitRepo) {
+      console.log('Repository check not confirmed yet, checking again...');
+      
+      // Direct check for .git directory
+      if (fs.existsSync(path.join(this.repoPath, '.git'))) {
+        console.log(`Found .git directory at ${this.repoPath}`);
+        this.isGitRepo = true;
+      } else {
+        // One more try with Git's own check
+        try {
+          const isRepo = await this.git.checkIsRepo();
+          this.isGitRepo = isRepo;
+          if (isRepo) {
+            console.log(`Confirmed valid Git repository at ${this.repoPath}`);
+          } else {
+            console.error('The specified path is not a Git repository');
+            return; // Exit if not a repo
+          }
+        } catch (err) {
+          console.error('Error checking if path is a git repository:', err);
+          return; // Exit on error
+        }
+      }
+    }
+    
     if (!this.isGitRepo) {
       console.error('Cannot monitor: Not a Git repository');
       return;
     }
+    
+    console.log(`Starting to monitor repository at ${this.repoPath}`);
     
     // Initialize watcher with appropriate configuration
     this.watcher = chokidar.watch(this.repoPath, {
@@ -101,21 +178,35 @@ class GitMonitor {
         '**/node_modules/**',
         '**/.git/**',
         '**/build/**',
-        '**/dist/**'
+        '**/dist/**',
+        // Common binary files and temp files
+        '**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.gif',
+        '**/*.db', '**/*.sqlite', '**/*.ico', '**/*.mov',
+        '**/*.mp4', '**/*.mp3', '**/*.zip', '**/*.tar',
+        '**/*.gz', '**/*.tgz', '**/*.7z', '**/*.pdf',
+        '**/*.dmg', '**/*.pkg', '**/*.woff', '**/*.ttf',
+        '**/._*', '**/Thumbs.db', '**/.DS_Store',
+        '**/tmp/**', '**/temp/**'
       ],
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
-        stabilityThreshold: 300,
-        pollInterval: 100
+        stabilityThreshold: 500,
+        pollInterval: 200
       },
-      ignorePermissionErrors: true
+      ignorePermissionErrors: true,
+      // Only watch actual files, not directories
+      alwaysStat: true,
+      depth: 5  // Limit depth to avoid excessive watching
     });
     
-    // Create a debounced function to handle file changes
-    const debouncedCallback = debounce(async (event, path) => {
-      console.log(`File ${event}: ${path}`);
+    // Create a highly debounced function to handle file changes
+    const debouncedCallback = debounce(async () => {
+      console.log(`File change detected, checking git status...`);
       try {
+        // Wait a moment for Git to register changes
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         const status = await this.getStatus();
         if (status.files && status.files.length > 0) {
           console.log(`Detected ${status.files.length} changed files, sending update`);
@@ -126,13 +217,19 @@ class GitMonitor {
       } catch (err) {
         console.error('Error handling file change:', err);
       }
-    }, 500);
+    }, 1000);  // Longer debounce for stability
+    
+    // Use a single handler for all events to avoid multiple callbacks
+    const fileChangeHandler = (event, filePath) => {
+      console.log(`File ${event}: ${filePath}`);
+      debouncedCallback();
+    };
     
     // Watch for all file events
     this.watcher
-      .on('add', (path) => debouncedCallback('added', path))
-      .on('change', (path) => debouncedCallback('changed', path))
-      .on('unlink', (path) => debouncedCallback('removed', path))
+      .on('add', (filePath) => fileChangeHandler('added', filePath))
+      .on('change', (filePath) => fileChangeHandler('changed', filePath))
+      .on('unlink', (filePath) => fileChangeHandler('removed', filePath))
       .on('error', (error) => console.error(`Watcher error: ${error}`));
     
     console.log(`Actively monitoring repository at ${this.repoPath}`);
