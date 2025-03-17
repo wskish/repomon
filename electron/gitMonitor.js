@@ -100,7 +100,6 @@ class GitMonitor {
     this.watcher = chokidar.watch(this.repoPath, {
       ignored: [
         '**/node_modules/**',
-        '**/.git/**',
         '**/build/**',
         '**/dist/**'
       ],
@@ -113,11 +112,23 @@ class GitMonitor {
       ignorePermissionErrors: true
     });
     
+    // Also monitor .git directory for commit-related events
+    const gitDirWatcher = chokidar.watch(path.join(this.repoPath, '.git'), {
+      ignored: ['**/.git/objects/**'], // Ignore large object files
+      persistent: true,
+      ignoreInitial: true,
+      depth: 1,
+      ignorePermissionErrors: true
+    });
+    
     // Create a debounced function to handle file changes
     const debouncedCallback = debounce(async (event, filePath) => {
       console.log(`File ${event}: ${filePath}`);
       try {
         const status = await this.getStatus();
+        
+        // Always send update even if no files are changed
+        // This ensures UI is refreshed after commits, when diffs should be cleared
         if (status.files && status.files.length > 0) {
           console.log(`Detected ${status.files.length} changed files, sending update`);
           
@@ -129,13 +140,25 @@ class GitMonitor {
               silent: true
             }).show();
           }
-          
-          callback(status);
         } else {
-          console.log('No git changes detected, skipping update');
+          console.log('No git changes detected, refreshing UI');
         }
+        
+        callback(status);
       } catch (err) {
         console.error('Error handling file change:', err);
+      }
+    }, 500);
+    
+    // Handle git operations specifically (like commits)
+    const gitOperationCallback = debounce(async (event, filePath) => {
+      console.log(`Git operation detected: ${filePath}`);
+      // Always refresh UI after git operations
+      try {
+        const status = await this.getStatus();
+        callback(status);
+      } catch (err) {
+        console.error('Error handling git operation:', err);
       }
     }, 500);
     
@@ -146,6 +169,12 @@ class GitMonitor {
       .on('unlink', (path) => debouncedCallback('removed', path))
       .on('error', (error) => console.error(`Watcher error: ${error}`));
     
+    // Watch for git operations (commits, merges, etc.)
+    gitDirWatcher
+      .on('add', (path) => gitOperationCallback('added', path))
+      .on('change', (path) => gitOperationCallback('changed', path))
+      .on('error', (error) => console.error(`Git watcher error: ${error}`));
+    
     console.log(`Actively monitoring repository at ${this.repoPath}`);
     
     // Send initial status
@@ -154,14 +183,23 @@ class GitMonitor {
     }).catch(err => {
       console.error('Error getting initial status:', err);
     });
+    
+    // Save reference to gitDirWatcher
+    this.gitDirWatcher = gitDirWatcher;
   }
   
   stopMonitoring() {
     if (this.watcher) {
       this.watcher.close();
       this.watcher = null;
-      console.log('Stopped monitoring repository');
     }
+    
+    if (this.gitDirWatcher) {
+      this.gitDirWatcher.close();
+      this.gitDirWatcher = null;
+    }
+    
+    console.log('Stopped monitoring repository');
   }
 }
 

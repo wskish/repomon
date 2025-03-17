@@ -176,7 +176,6 @@ class GitMonitor {
     this.watcher = chokidar.watch(this.repoPath, {
       ignored: [
         '**/node_modules/**',
-        '**/.git/**',
         '**/build/**',
         '**/dist/**',
         // Common binary files and temp files
@@ -200,6 +199,18 @@ class GitMonitor {
       depth: 5  // Limit depth to avoid excessive watching
     });
     
+    // Also monitor .git directory for commit-related events, but with specific filters
+    const gitDirWatcher = chokidar.watch(path.join(this.repoPath, '.git'), {
+      ignored: [
+        '**/.git/objects/**', // Ignore large object files
+        '**/.git/logs/refs/**'
+      ],
+      persistent: true,
+      ignoreInitial: true,
+      depth: 1,
+      ignorePermissionErrors: true
+    });
+    
     // Create a highly debounced function to handle file changes
     const debouncedCallback = debounce(async () => {
       console.log(`File change detected, checking git status...`);
@@ -208,16 +219,32 @@ class GitMonitor {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const status = await this.getStatus();
+        // Always send update even if no files are changed
+        // This ensures UI is refreshed after commits, when diffs should be cleared
         if (status.files && status.files.length > 0) {
           console.log(`Detected ${status.files.length} changed files, sending update`);
-          callback(status);
         } else {
-          console.log('No git changes detected, skipping update');
+          console.log('No git changes detected, refreshing UI');
         }
+        callback(status);
       } catch (err) {
         console.error('Error handling file change:', err);
       }
     }, 1000);  // Longer debounce for stability
+    
+    // Handle git operations specifically (like commits)
+    const gitOperationCallback = debounce(async () => {
+      console.log(`Git operation detected, refreshing status...`);
+      try {
+        // Wait a bit longer for Git operations to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const status = await this.getStatus();
+        callback(status);
+      } catch (err) {
+        console.error('Error handling git operation:', err);
+      }
+    }, 800);
     
     // Use a single handler for all events to avoid multiple callbacks
     const fileChangeHandler = (event, filePath) => {
@@ -232,6 +259,18 @@ class GitMonitor {
       .on('unlink', (filePath) => fileChangeHandler('removed', filePath))
       .on('error', (error) => console.error(`Watcher error: ${error}`));
     
+    // Watch for git operations
+    gitDirWatcher
+      .on('add', (filePath) => {
+        console.log(`Git file added: ${filePath}`);
+        gitOperationCallback();
+      })
+      .on('change', (filePath) => {
+        console.log(`Git file changed: ${filePath}`);
+        gitOperationCallback();
+      })
+      .on('error', (error) => console.error(`Git watcher error: ${error}`));
+    
     console.log(`Actively monitoring repository at ${this.repoPath}`);
     
     // Send initial status
@@ -240,14 +279,23 @@ class GitMonitor {
     }).catch(err => {
       console.error('Error getting initial status:', err);
     });
+    
+    // Save reference to gitDirWatcher
+    this.gitDirWatcher = gitDirWatcher;
   }
   
   stopMonitoring() {
     if (this.watcher) {
       this.watcher.close();
       this.watcher = null;
-      console.log('Stopped monitoring repository');
     }
+    
+    if (this.gitDirWatcher) {
+      this.gitDirWatcher.close();
+      this.gitDirWatcher = null;
+    }
+    
+    console.log('Stopped monitoring repository');
   }
 }
 
