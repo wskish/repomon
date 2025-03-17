@@ -13,7 +13,11 @@ export const parseDiff = (diff) => {
   
   // Initialize result object
   const result = {
-    hunks: []
+    hunks: [],
+    stats: {
+      additions: 0,
+      deletions: 0
+    }
   };
   
   let currentHunk = null;
@@ -48,6 +52,13 @@ export const parseDiff = (diff) => {
           !line.startsWith('---') && 
           !line.startsWith('+++')) {
         currentHunk.lines.push(line);
+        
+        // Count additions and deletions
+        if (line.startsWith('+')) {
+          result.stats.additions++;
+        } else if (line.startsWith('-')) {
+          result.stats.deletions++;
+        }
       }
     }
   }

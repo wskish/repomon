@@ -28,6 +28,8 @@
   padding: 10px 15px;
   background-color: #f9f9f9;
   border-bottom: 1px solid #eee;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .file-info {
@@ -77,6 +79,37 @@
 
 .status-deleted {
   background-color: #ffdce0;
+  color: #dc3545;
+}
+
+.diff-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.additions, .deletions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85em;
+}
+
+.additions {
+  color: #28a745;
+}
+
+.additions-icon {
+  color: #28a745;
+}
+
+.deletions {
+  color: #dc3545;
+}
+
+.deletions-icon {
   color: #dc3545;
 }
 

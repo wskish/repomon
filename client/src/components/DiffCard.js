@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import DiffViewer from './DiffViewer';
-import { FiMaximize, FiMinimize, FiFileText } from 'react-icons/fi';
+import { FiMaximize, FiMinimize, FiFileText, FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
 import '../styles/DiffCard.css';
+import { parseDiff } from '../utils/diffParser';
 
 const DiffCard = ({ file, color, fontSize }) => {
   const [expanded, setExpanded] = useState(false);
@@ -9,6 +10,12 @@ const DiffCard = ({ file, color, fontSize }) => {
   
   // Extract filename from path
   const fileName = filePath.split('/').pop();
+  
+  // Parse diff stats
+  const diffStats = useMemo(() => {
+    const parsed = parseDiff(diff);
+    return parsed ? parsed.stats : { additions: 0, deletions: 0 };
+  }, [diff]);
   
   // Get status badge class
   const getStatusClass = () => {
@@ -41,6 +48,20 @@ const DiffCard = ({ file, color, fontSize }) => {
           <span className="file-name">{fileName}</span>
           <span className="file-path">{filePath.replace(fileName, '')}</span>
           <span className={`file-status ${getStatusClass()}`}>{status}</span>
+        </div>
+        <div className="diff-stats">
+          {diffStats.additions > 0 && (
+            <span className="additions">
+              <FiPlusCircle className="additions-icon" />
+              {diffStats.additions}
+            </span>
+          )}
+          {diffStats.deletions > 0 && (
+            <span className="deletions">
+              <FiMinusCircle className="deletions-icon" />
+              {diffStats.deletions}
+            </span>
+          )}
         </div>
         <button
           className="expand-button"

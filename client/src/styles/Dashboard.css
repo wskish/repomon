@@ -14,6 +14,12 @@
   border-bottom: 1px solid #ddd;
 }
 
+.branch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .dashboard-header h2 {
   margin: 0;
   font-size: 1.2rem;
@@ -26,6 +32,29 @@
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.9rem;
+}
+
+.total-changes {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.total-changes .additions,
+.total-changes .deletions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.total-changes .additions {
+  color: #28a745;
+}
+
+.total-changes .deletions {
+  color: #dc3545;
 }
 
 .diff-cards-container {
@@ -45,6 +74,11 @@
   .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: 15px;
+  }
+  
+  .total-changes {
+    margin-top: 5px;
+    gap: 20px;
   }
 }
