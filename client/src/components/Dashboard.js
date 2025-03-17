@@ -29,7 +29,7 @@ const Dashboard = ({ repoStatus }) => {
   // Adjust font size based on number of files and window size
   useEffect(() => {
     const calculateFontSize = () => {
-      const baseFontSize = 14;
+      const baseFontSize = 16;
       const fileCount = files.length;
       
       // Decrease font size as number of files increases
