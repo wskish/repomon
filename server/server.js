@@ -50,10 +50,24 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start monitoring repository
-gitMonitor.startMonitoring((status) => {
-  io.emit('repo-status', status);
-});
+// Start monitoring repository with retry mechanism
+const startMonitoringWithRetry = async () => {
+  try {
+    // Wait for Git repository check to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    gitMonitor.startMonitoring((status) => {
+      console.log(`Broadcasting update with ${status.files?.length || 0} changed files`);
+      io.emit('repo-status', status);
+    });
+  } catch (error) {
+    console.error('Error starting monitoring:', error);
+    console.log('Retrying in 3 seconds...');
+    setTimeout(startMonitoringWithRetry, 3000);
+  }
+};
+
+startMonitoringWithRetry();
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

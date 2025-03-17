@@ -17,7 +17,12 @@ class GitMonitor {
         this.isGitRepo = isRepo;
         if (!isRepo) {
           console.error('The specified path is not a Git repository');
+        } else {
+          console.log(`Confirmed valid Git repository at ${repoPath}`);
         }
+      })
+      .catch(err => {
+        console.error('Error checking if path is a git repository:', err);
       });
   }
   
@@ -27,16 +32,28 @@ class GitMonitor {
     try {
       // Get current status
       const status = await this.git.status();
+      console.log('Git status:', {
+        branch: status.current,
+        modified: status.modified.length,
+        created: status.created.length,
+        deleted: status.deleted.length,
+        staged: status.staged.length
+      });
       
       // Get detailed diff for each modified file
       const diffs = await Promise.all(
-        [...status.modified, ...status.created, ...status.deleted].map(async (file) => {
+        [...status.modified, ...status.created, ...status.deleted, ...status.not_added].map(async (file) => {
           let diff;
           try {
-            if (status.created.includes(file)) {
-              // For new files, show the entire file as added
-              const content = fs.readFileSync(path.join(this.repoPath, file), 'utf8');
-              diff = `diff --git a/${file} b/${file}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n${content.split('\n').map(line => `+${line}`).join('\n')}`;
+            if (status.created.includes(file) || status.not_added.includes(file)) {
+              // For new/untracked files, show the entire file as added
+              try {
+                const content = fs.readFileSync(path.join(this.repoPath, file), 'utf8');
+                diff = `diff --git a/${file} b/${file}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n${content.split('\n').map(line => `+${line}`).join('\n')}`;
+              } catch (readErr) {
+                console.error(`Error reading file ${file}:`, readErr);
+                diff = `Unable to read file: ${readErr.message}`;
+              }
             } else if (status.deleted.includes(file)) {
               // For deleted files, get diff from git
               diff = await this.git.diff(['--', file]);
@@ -46,7 +63,7 @@ class GitMonitor {
             }
             return {
               file,
-              status: status.created.includes(file) ? 'added' : 
+              status: status.created.includes(file) || status.not_added.includes(file) ? 'added' : 
                       status.modified.includes(file) ? 'modified' : 'deleted',
               diff
             };
@@ -54,9 +71,9 @@ class GitMonitor {
             console.error(`Error getting diff for ${file}:`, error);
             return {
               file,
-              status: status.created.includes(file) ? 'added' : 
+              status: status.created.includes(file) || status.not_added.includes(file) ? 'added' : 
                       status.modified.includes(file) ? 'modified' : 'deleted',
-              diff: 'Error getting diff'
+              diff: `Error getting diff: ${error.message}`
             };
           }
         })
@@ -78,7 +95,7 @@ class GitMonitor {
       return;
     }
     
-    // Initialize watcher
+    // Initialize watcher with appropriate configuration
     this.watcher = chokidar.watch(this.repoPath, {
       ignored: [
         '**/node_modules/**',
@@ -87,22 +104,45 @@ class GitMonitor {
         '**/dist/**'
       ],
       persistent: true,
-      ignoreInitial: true
+      ignoreInitial: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 300,
+        pollInterval: 100
+      },
+      ignorePermissionErrors: true
     });
     
-    // Debounce the callback to prevent rapid successive updates
-    const debouncedCallback = debounce(async () => {
-      const status = await this.getStatus();
-      callback(status);
-    }, 300);
+    // Create a debounced function to handle file changes
+    const debouncedCallback = debounce(async (event, path) => {
+      console.log(`File ${event}: ${path}`);
+      try {
+        const status = await this.getStatus();
+        if (status.files && status.files.length > 0) {
+          console.log(`Detected ${status.files.length} changed files, sending update`);
+          callback(status);
+        } else {
+          console.log('No git changes detected, skipping update');
+        }
+      } catch (err) {
+        console.error('Error handling file change:', err);
+      }
+    }, 500);
     
-    // Watch for file changes
+    // Watch for all file events
     this.watcher
-      .on('add', debouncedCallback)
-      .on('change', debouncedCallback)
-      .on('unlink', debouncedCallback);
+      .on('add', (path) => debouncedCallback('added', path))
+      .on('change', (path) => debouncedCallback('changed', path))
+      .on('unlink', (path) => debouncedCallback('removed', path))
+      .on('error', (error) => console.error(`Watcher error: ${error}`));
     
-    console.log(`Monitoring repository at ${this.repoPath}`);
+    console.log(`Actively monitoring repository at ${this.repoPath}`);
+    
+    // Send initial status
+    this.getStatus().then(status => {
+      callback(status);
+    }).catch(err => {
+      console.error('Error getting initial status:', err);
+    });
   }
   
   stopMonitoring() {
