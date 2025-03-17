@@ -11,9 +11,11 @@ let gitMonitor;
 let tray = null;
 let windowStateManager;
 let lastRepository = null;
+let recentRepositories = [];
 
 /**
- * Simple persistent storage (key-value)
+ * Enhanced persistent storage (key-value)
+ * Includes support for recent repositories
  */
 const store = {
   get: function(key, defaultValue = null) {
@@ -55,6 +57,47 @@ const store = {
     } catch (err) {
       console.error('Error writing config:', err);
     }
+  },
+  
+  // Add repository to recent list
+  addRecentRepository: function(repoPath) {
+    try {
+      if (!repoPath) return;
+      
+      // Get current recent repositories
+      let recents = this.get('recentRepositories', []);
+      
+      // Remove if already exists (to move it to top)
+      recents = recents.filter(repo => repo.path !== repoPath);
+      
+      // Add to beginning of array
+      recents.unshift({
+        path: repoPath,
+        name: path.basename(repoPath),
+        timestamp: new Date().toISOString()
+      });
+      
+      // Limit to 20 most recent
+      if (recents.length > 20) {
+        recents = recents.slice(0, 20);
+      }
+      
+      // Save back to config
+      this.set('recentRepositories', recents);
+      
+      // Update global variable
+      recentRepositories = recents;
+      
+      return recents;
+    } catch (err) {
+      console.error('Error adding recent repository:', err);
+      return [];
+    }
+  },
+  
+  // Get recent repositories
+  getRecentRepositories: function() {
+    return this.get('recentRepositories', []);
   }
 };
 
@@ -132,8 +175,13 @@ function createWindow() {
   
   // Initialize repository from saved config or show picker
   try {
+    // Load last repository
     lastRepository = store.get('lastRepository');
     console.log('Last repository:', lastRepository);
+    
+    // Load recent repositories list
+    recentRepositories = store.getRecentRepositories();
+    console.log(`Loaded ${recentRepositories.length} recent repositories`);
     
     if (lastRepository && lastRepository.path) {
       setTimeout(() => {
@@ -146,7 +194,7 @@ function createWindow() {
       }, 1000);
     }
   } catch (err) {
-    console.error('Error loading last repository:', err);
+    console.error('Error loading repository data:', err);
   }
   
   // Handle window close event
@@ -193,6 +241,9 @@ async function initRepository(repoPath) {
     store.set('lastRepository', { path: repoPath });
     lastRepository = { path: repoPath };
     
+    // Add to recent repositories
+    store.addRecentRepository(repoPath);
+    
     // Send path to renderer
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('repo-path', repoPath);
@@ -236,6 +287,53 @@ async function openRepositoryDialog() {
 }
 
 /**
+ * Show recent repositories menu
+ */
+function showRecentRepositoriesMenu(x, y) {
+  // Load recent repositories from store
+  if (recentRepositories.length === 0) {
+    recentRepositories = store.getRecentRepositories();
+  }
+  
+  // Create menu items for each repository
+  const menuItems = recentRepositories.map(repo => {
+    return {
+      label: repo.name,
+      sublabel: repo.path,
+      click: () => {
+        initRepository(repo.path);
+      }
+    };
+  });
+  
+  // Add option to browse for repository
+  menuItems.push(
+    { type: 'separator' },
+    { 
+      label: 'Browse for Repository...',
+      click: () => openRepositoryDialog()
+    }
+  );
+  
+  // If we have items, create and show the menu
+  if (menuItems.length > 0) {
+    const menu = Menu.buildFromTemplate(menuItems);
+    
+    if (x && y) {
+      // Show at specified position (context menu)
+      menu.popup({ x, y });
+    } else {
+      // Show at mouse position
+      menu.popup({ window: mainWindow });
+    }
+    
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Create system tray icon
  */
 function createTray() {
@@ -268,6 +366,7 @@ function createTray() {
     const contextMenu = Menu.buildFromTemplate([
       { label: 'Show Repomon', click: () => mainWindow.show() },
       { label: 'Open Repository...', click: openRepositoryDialog },
+      { label: 'Recent Repositories', click: () => showRecentRepositoriesMenu() },
       { type: 'separator' },
       { label: 'Quit', click: () => { app.isQuitting = true; app.quit(); }}
     ]);
@@ -303,6 +402,11 @@ function createMenu() {
             label: 'Open Repository...',
             accelerator: 'CmdOrCtrl+O',
             click: openRepositoryDialog
+          },
+          {
+            label: 'Recent Repositories',
+            accelerator: 'CmdOrCtrl+R',
+            click: () => showRecentRepositoriesMenu()
           },
           { type: 'separator' },
           { role: 'quit' }
@@ -347,6 +451,21 @@ function createMenu() {
 
 // IPC Handlers
 ipcMain.handle('open-repository', openRepositoryDialog);
+
+// Open recent repositories menu
+ipcMain.handle('show-recent-repositories', (event, position) => {
+  // Position is optional, can be used to position the menu
+  if (position && position.x && position.y) {
+    return showRecentRepositoriesMenu(position.x, position.y);
+  } else {
+    return showRecentRepositoriesMenu();
+  }
+});
+
+// Get recent repositories list
+ipcMain.handle('get-recent-repositories', () => {
+  return store.getRecentRepositories();
+});
 
 // Get repository status on demand
 ipcMain.handle('get-status', async () => {

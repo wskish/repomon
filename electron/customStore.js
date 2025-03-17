@@ -1,6 +1,7 @@
 /**
  * Simple store implementation to replace electron-store
  * This provides basic persistence without dependency issues
+ * Includes functionality for managing recent repositories
  */
 const fs = require('fs');
 const path = require('path');

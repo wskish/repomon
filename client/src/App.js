@@ -108,6 +108,16 @@ function App() {
       }
     }
   };
+  
+  const handleShowRecentRepositories = async () => {
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.showRecentRepositories();
+      } catch (err) {
+        console.error('Error showing recent repositories:', err);
+      }
+    }
+  };
 
   return (
     <div className="App">
@@ -115,9 +125,14 @@ function App() {
         <h1>Repomon</h1>
         <div className="app-controls">
           {isElectron && (
-            <button className="repo-button" onClick={handleOpenRepository}>
-              Open Repository
-            </button>
+            <>
+              <button className="repo-button" onClick={handleOpenRepository}>
+                Open Repository
+              </button>
+              <button className="repo-button" onClick={handleShowRecentRepositories}>
+                Recent
+              </button>
+            </>
           )}
           <div className="connection-status">
             Status: {connected ? 'Active' : 'Disconnected'}

@@ -37,10 +37,19 @@
   cursor: pointer;
   font-size: 0.9rem;
   transition: background-color 0.2s;
+  margin-right: 5px;
 }
 
 .repo-button:hover {
   background-color: #45a049;
+}
+
+.repo-button:nth-child(2) {
+  background-color: #2196F3;
+}
+
+.repo-button:nth-child(2):hover {
+  background-color: #0b7dda;
 }
 
 .connection-status {
