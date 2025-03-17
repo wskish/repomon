@@ -20,8 +20,21 @@ const DiffCard = ({ file, color, fontSize }) => {
     }
   };
 
+  const toggleExpand = (e) => {
+    // Don't toggle if clicking directly on a link or button in the content
+    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || 
+        e.target.closest('button') || e.target.closest('a')) {
+      return;
+    }
+    setExpanded(!expanded);
+  };
+
   return (
-    <div className={`diff-card ${expanded ? 'expanded' : ''}`} style={{ borderLeftColor: color }}>
+    <div 
+      className={`diff-card ${expanded ? 'expanded' : ''}`} 
+      style={{ borderLeftColor: color }}
+      onClick={toggleExpand}
+    >
       <div className="diff-card-header">
         <div className="file-info">
           <FiFileText className="file-icon" />
@@ -31,7 +44,10 @@ const DiffCard = ({ file, color, fontSize }) => {
         </div>
         <button
           className="expand-button"
-          onClick={() => setExpanded(!expanded)}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent event from bubbling up to card
+            setExpanded(!expanded);
+          }}
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           {expanded ? <FiMinimize /> : <FiMaximize />}
@@ -40,6 +56,11 @@ const DiffCard = ({ file, color, fontSize }) => {
       
       <div className={`diff-card-content ${expanded ? 'show' : ''}`}>
         <DiffViewer diff={diff} fontSize={fontSize} />
+        {!expanded && (
+          <div className="expand-hint">
+            Click anywhere on card to expand
+          </div>
+        )}
       </div>
     </div>
   );
