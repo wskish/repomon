@@ -1,8 +1,8 @@
 .diff-viewer {
   width: 100%;
   overflow-x: auto;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 1.05em;
+  font-family: 'Inconsolata', 'Consolas', 'Menlo', monospace;
+  font-size: 0.95em;
   line-height: 1.5;
 }
 
