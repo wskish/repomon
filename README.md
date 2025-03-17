@@ -83,4 +83,4 @@ The application is designed to be lightweight and responsive even with a large n
 - Card expansion is controlled to prevent layout thrashing
 - Network requests are minimized by using WebSockets instead of polling
 
-Would you like me to explain any specific part of the implementation in more detail?
+
