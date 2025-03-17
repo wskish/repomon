@@ -1,4 +1,4 @@
-# Repomona: Real-time Repository Change Visualization
+# Repomon: Real-time Repository Change Visualization
 
 
 ## Key Features
