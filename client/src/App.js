@@ -7,6 +7,7 @@ function App() {
   const [repoStatus, setRepoStatus] = useState(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
+  const [repoPath, setRepoPath] = useState("");
 
   useEffect(() => {
     // Connect to WebSocket server
@@ -16,6 +17,9 @@ function App() {
       console.log('Connected to server');
       setConnected(true);
       setError(null);
+      
+      // Request the repository path
+      socket.emit('get-repo-path');
     });
     
     socket.on('disconnect', () => {
@@ -34,6 +38,11 @@ function App() {
       setRepoStatus(status);
     });
     
+    socket.on('repo-path', (path) => {
+      console.log('Monitoring repository at:', path);
+      setRepoPath(path);
+    });
+    
     return () => {
       socket.disconnect();
     };
@@ -47,6 +56,11 @@ function App() {
           Status: {connected ? 'Connected' : 'Disconnected'}
         </div>
       </header>
+      {repoPath && (
+        <div className="repo-path">
+          Monitoring: <code>{repoPath}</code>
+        </div>
+      )}
       <main>
         {error && <div className="error-message">{error}</div>}
         {repoStatus ? (

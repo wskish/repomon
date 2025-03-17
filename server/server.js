@@ -24,8 +24,11 @@ const io = socketIo(server, {
   }
 });
 
+// Get repository path from environment variable or use current directory
+const repoPath = process.env.REPO_PATH || process.cwd();
+
 // Initialize Git monitor
-const gitMonitor = new GitMonitor(process.env.REPO_PATH || process.cwd());
+const gitMonitor = new GitMonitor(repoPath);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -34,6 +37,11 @@ io.on('connection', (socket) => {
   // Send initial repository state
   gitMonitor.getStatus().then(status => {
     socket.emit('repo-status', status);
+  });
+  
+  // Handle request for repository path
+  socket.on('get-repo-path', () => {
+    socket.emit('repo-path', repoPath);
   });
   
   // Handle disconnection
@@ -50,4 +58,5 @@ gitMonitor.startMonitoring((status) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Monitoring repository at: ${repoPath}`);
 });
