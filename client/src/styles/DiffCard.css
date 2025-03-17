@@ -1,0 +1,108 @@
+.diff-card {
+  width: calc(50% - 15px);
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #ccc;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-card.expanded {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.diff-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f9f9f9;
+  border-bottom: 1px solid #eee;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.file-icon {
+  color: #555;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-path {
+  color: #888;
+  font-size: 0.85em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-status {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.status-added {
+  background-color: #e6ffed;
+  color: #28a745;
+}
+
+.status-modified {
+  background-color: #fff5cc;
+  color: #f0ad4e;
+}
+
+.status-deleted {
+  background-color: #ffdce0;
+  color: #dc3545;
+}
+
+.expand-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.expand-button:hover {
+  background-color: #eee;
+}
+
+.diff-card-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.diff-card-content.show {
+  max-height: 1000px; /* Arbitrary large value */
+  overflow: auto;
+}
+
+/* Responsive Layout */
+@media (max-width: 992px) {
+  .diff-card {
+    width: 100%;
+  }
+}

@@ -1,5 +1,7 @@
 # Repomon: Real-time Repository Change Visualization
 
+Repomon is a tool that provides real-time visualization of changes in your Git repository with a side-by-side diff view. It's perfect for keeping an eye on claude code or other agents as they ransack your repository.
+
 
 ## Key Features
 
@@ -9,6 +11,31 @@
 - **Auto-scaling font size** based on number of changed files
 - **File type color coding** for better visual organization
 - **Expandable/collapsible cards** to focus on specific changes
+
+## Installation
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/yourusername/repomon.git
+   cd repomon
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm run install-all
+   ```
+
+## Usage
+
+1. Start Repomon with the repository you want to monitor:
+   ```bash
+   ./start.sh /path/to/your/repo
+   ```
+   If no path is provided, it will monitor the current directory.
+
+2. Access the web interface at `http://localhost:3000`
+
+3. Make changes to files in your repository and see them appear in real-time!
 
 ## Architecture Overview
 
@@ -51,20 +78,6 @@ The application uses:
 - CSS media queries for different screen sizes
 - ResizeObserver to detect window size changes
 
-## How to Deploy
-
-1. Clone the repo and navigate to the project directory
-2. Install dependencies:
-   ```bash
-   npm install
-   cd client && npm install && cd ..
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-4. Access the application at `http://localhost:3000`
-
 ## Customizing the Tool
 
 You can easily extend the application by:
@@ -83,4 +96,6 @@ The application is designed to be lightweight and responsive even with a large n
 - Card expansion is controlled to prevent layout thrashing
 - Network requests are minimized by using WebSockets instead of polling
 
+## License
 
+MIT
