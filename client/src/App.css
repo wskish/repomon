@@ -13,6 +13,7 @@
   justify-content: space-between;
   align-items: center;
   color: white;
+  -webkit-app-region: drag; /* Allow dragging the window from header */
 }
 
 .App-header h1 {
@@ -20,11 +21,42 @@
   font-size: 1.5rem;
 }
 
+.app-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  -webkit-app-region: no-drag; /* Make controls clickable */
+}
+
+.repo-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.repo-button:hover {
+  background-color: #45a049;
+}
+
 .connection-status {
   font-size: 0.9rem;
   padding: 4px 8px;
   border-radius: 4px;
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-footer {
+  background-color: #f0f0f0;
+  color: #666;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  text-align: right;
+  border-top: 1px solid #ddd;
 }
 
 .repo-path {
