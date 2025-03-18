@@ -1,5 +1,5 @@
-import React from 'react';
-import { FiPlus, FiGitBranch, FiTrash2, FiFolder, FiChevronRight, FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiPlus, FiGitBranch, FiFolder, FiChevronRight, FiPlusCircle, FiMinusCircle, FiTrash2 } from 'react-icons/fi';
 import '../styles/RepoSidebar.css';
 
 const RepoSidebar = ({ 
@@ -9,8 +9,21 @@ const RepoSidebar = ({
   onSelectRepo, 
   onRemoveRepo 
 }) => {
+  const [menuOpen, setMenuOpen] = useState(null);
+
+  const handleFolderClick = (e, repoPath) => {
+    e.stopPropagation();
+    setMenuOpen(menuOpen === repoPath ? null : repoPath);
+  };
+
+  const handleClickOutside = () => {
+    if (menuOpen) {
+      setMenuOpen(null);
+    }
+  };
+
   return (
-    <div className="repo-sidebar">
+    <div className="repo-sidebar" onClick={handleClickOutside}>
       <div className="sidebar-header">
         <h2>Repositories</h2>
         <button 
@@ -35,49 +48,65 @@ const RepoSidebar = ({
               className={`repo-item ${currentRepo === repo.path ? 'active' : ''}`}
               onClick={() => onSelectRepo(repo.path)}
             >
-              <div className="repo-icon">
-                <FiFolder />
-              </div>
-              <div className="repo-info">
-                <div className="repo-name">{repo.name}</div>
-                {repo.branch && (
-                  <div className="repo-branch">
-                    <FiGitBranch className="branch-icon" />
-                    {repo.branch}
-                  </div>
-                )}
-              </div>
-              <div className="repo-stats">
-                {repo.changedFiles > 0 && (
-                  <div className="changed-files">
-                    {repo.changedFiles} {repo.changedFiles === 1 ? 'file' : 'files'}
-                  </div>
-                )}
-                <div className="change-stats">
-                  {repo.additions > 0 && (
-                    <span className="additions">
-                      <FiPlusCircle className="additions-icon" />
-                      {repo.additions}
-                    </span>
-                  )}
-                  {repo.deletions > 0 && (
-                    <span className="deletions">
-                      <FiMinusCircle className="deletions-icon" />
-                      {repo.deletions}
-                    </span>
+              <div className="repo-item-header">
+                <div 
+                  className="repo-icon"
+                  onClick={(e) => handleFolderClick(e, repo.path)}
+                  title="Repository options"
+                >
+                  <FiFolder />
+                  
+                  {menuOpen === repo.path && (
+                    <div className="repo-menu">
+                      <button
+                        className="repo-menu-item repo-menu-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(null);
+                          onRemoveRepo(repo.path);
+                        }}
+                      >
+                        <FiTrash2 />
+                        <span>Remove Repository</span>
+                      </button>
+                    </div>
                   )}
                 </div>
+                <div className="repo-name">{repo.name}</div>
               </div>
-              <button 
-                className="remove-repo-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemoveRepo(repo.path);
-                }}
-                title="Remove Repository"
-              >
-                <FiTrash2 />
-              </button>
+              
+              <div className="repo-details-row">
+                <div className="repo-details">
+                  {repo.branch && (
+                    <div className="repo-branch">
+                      <FiGitBranch className="branch-icon" />
+                      {repo.branch}
+                    </div>
+                  )}
+                </div>
+                <div className="repo-stats">
+                  {repo.changedFiles > 0 && (
+                    <div className="changed-files">
+                      {repo.changedFiles} {repo.changedFiles === 1 ? 'file' : 'files'}
+                    </div>
+                  )}
+                  <div className="change-stats">
+                    {repo.additions > 0 && (
+                      <span className="additions">
+                        <FiPlusCircle className="additions-icon" />
+                        {repo.additions}
+                      </span>
+                    )}
+                    {repo.deletions > 0 && (
+                      <span className="deletions">
+                        <FiMinusCircle className="deletions-icon" />
+                        {repo.deletions}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
               {currentRepo === repo.path && (
                 <div className="active-indicator">
                   <FiChevronRight />
