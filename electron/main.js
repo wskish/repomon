@@ -705,6 +705,63 @@ function createMenu() {
 // IPC Handlers
 ipcMain.handle('open-repository', openRepositoryDialog);
 
+// Open repository in code editor
+ipcMain.handle('open-in-editor', async (event, repoPath) => {
+  try {
+    console.log(`Opening repository in VS Code: ${repoPath}`);
+    const { exec } = require('child_process');
+    
+    exec(`code "${repoPath}"`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error opening VS Code: ${error.message}`);
+        return { error: error.message };
+      }
+      if (stderr) {
+        console.error(`VS Code stderr: ${stderr}`);
+        return { error: stderr };
+      }
+      return { success: true };
+    });
+    
+    return { success: true };
+  } catch (err) {
+    console.error('Error opening in VS Code:', err);
+    return { error: err.message };
+  }
+});
+
+// Open specific file in code editor
+ipcMain.handle('open-file-in-editor', async (event, repoPath, filePath, lineNumber = 1) => {
+  try {
+    // Use absolute path to the file
+    const absoluteFilePath = path.isAbsolute(filePath) 
+      ? filePath 
+      : path.join(repoPath, filePath);
+    
+    // Format with line number for VS Code
+    const gotoPath = `${absoluteFilePath}:${lineNumber}`;
+    console.log(`Opening file in VS Code at line ${lineNumber}: ${gotoPath}`);
+    const { exec } = require('child_process');
+    
+    exec(`code --goto "${gotoPath}"`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error opening file in VS Code: ${error.message}`);
+        return { error: error.message };
+      }
+      if (stderr) {
+        console.error(`VS Code stderr: ${stderr}`);
+        return { error: stderr };
+      }
+      return { success: true };
+    });
+    
+    return { success: true };
+  } catch (err) {
+    console.error('Error opening file in VS Code:', err);
+    return { error: err.message };
+  }
+});
+
 // Open recent repositories menu
 ipcMain.handle('show-recent-repositories', (event, position) => {
   // Position is optional, can be used to position the menu

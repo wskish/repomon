@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import DiffViewer from './DiffViewer';
-import { FiMaximize, FiMinimize, FiFileText, FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
+import { FiMaximize, FiMinimize, FiFileText, FiPlusCircle, FiMinusCircle, FiCode } from 'react-icons/fi';
 import '../styles/DiffCard.css';
 import { parseDiff } from '../utils/diffParser';
 
-const DiffCard = ({ file, color, fontSize }) => {
+const DiffCard = ({ file, color, fontSize, onOpenFileInEditor }) => {
   const [expanded, setExpanded] = useState(false);
   const { file: filePath, status, diff } = file;
   
@@ -48,6 +48,21 @@ const DiffCard = ({ file, color, fontSize }) => {
           <span className="file-name">{fileName}</span>
           <span className="file-path">{filePath.replace(fileName, '')}</span>
           <span className={`file-status ${getStatusClass()}`}>{status}</span>
+          {onOpenFileInEditor && status !== 'deleted' && (
+            <button 
+              className="open-in-editor-btn" 
+              onClick={(e) => {
+                e.stopPropagation();
+                // Extract first changed line from the parsed diff
+                const parsedDiff = parseDiff(diff);
+                const lineNumber = parsedDiff?.firstChangedLine || 1;
+                onOpenFileInEditor(filePath, lineNumber);
+              }}
+              title="Open file in VS Code at first change"
+            >
+              <FiCode />
+            </button>
+          )}
         </div>
         <div className="diff-stats">
           {diffStats.additions > 0 && (

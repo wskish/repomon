@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Repository operations
   openRepository: () => ipcRenderer.invoke('open-repository'),
   getStatus: (repoPath) => ipcRenderer.invoke('get-status', repoPath),
+  openInEditor: (repoPath) => ipcRenderer.invoke('open-in-editor', repoPath),
+  openFileInEditor: (repoPath, filePath, lineNumber) => ipcRenderer.invoke('open-file-in-editor', repoPath, filePath, lineNumber),
   
   // Multiple repositories management
   getActiveRepositories: () => ipcRenderer.invoke('get-active-repositories'),

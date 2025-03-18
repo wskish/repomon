@@ -5,7 +5,7 @@ import { parseDiff } from '../utils/diffParser';
 import { FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
 import '../styles/Dashboard.css';
 
-const Dashboard = ({ repoStatus }) => {
+const Dashboard = ({ repoStatus, onOpenFileInEditor }) => {
   const [fontSize, setFontSize] = useState(14);
   const dashboardRef = useRef(null);
   const { files } = repoStatus;
@@ -85,6 +85,7 @@ const Dashboard = ({ repoStatus }) => {
               file={file}
               color={getFileTypeColor(file.file)}
               fontSize={fontSize}
+              onOpenFileInEditor={(filePath, lineNumber) => onOpenFileInEditor(filePath, lineNumber)}
             />
           ))}
         </div>

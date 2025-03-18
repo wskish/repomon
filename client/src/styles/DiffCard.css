@@ -37,6 +37,25 @@
   align-items: center;
   gap: 8px;
   overflow: hidden;
+  flex: 1;
+}
+
+.open-in-editor-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #007acc;
+  padding: 4px;
+  margin-left: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.open-in-editor-btn:hover {
+  background-color: #e8f3fb;
 }
 
 .file-icon {

@@ -17,7 +17,8 @@ export const parseDiff = (diff) => {
     stats: {
       additions: 0,
       deletions: 0
-    }
+    },
+    firstChangedLine: null
   };
   
   let currentHunk = null;
@@ -56,8 +57,18 @@ export const parseDiff = (diff) => {
         // Count additions and deletions
         if (line.startsWith('+')) {
           result.stats.additions++;
+          
+          // Track first added line for navigation
+          if (result.firstChangedLine === null) {
+            result.firstChangedLine = currentHunk.newStart + currentHunk.lines.filter(l => !l.startsWith('-')).length - 1;
+          }
         } else if (line.startsWith('-')) {
           result.stats.deletions++;
+          
+          // If no additions found yet, track first deleted line
+          if (result.firstChangedLine === null) {
+            result.firstChangedLine = currentHunk.newStart;
+          }
         }
       }
     }

@@ -202,6 +202,26 @@ function App() {
     setSidebarVisible(!sidebarVisible);
   };
 
+  const handleOpenInEditor = async (repoPath) => {
+    if (isElectron) {
+      try {
+        await window.electronAPI.openInEditor(repoPath);
+      } catch (err) {
+        console.error('Error opening repository in editor:', err);
+      }
+    }
+  };
+
+  const handleOpenFileInEditor = async (repoPath, filePath, lineNumber = 1) => {
+    if (isElectron) {
+      try {
+        await window.electronAPI.openFileInEditor(repoPath, filePath, lineNumber);
+      } catch (err) {
+        console.error('Error opening file in editor:', err);
+      }
+    }
+  };
+
   const currentRepoName = repositories.find(r => r.path === currentRepo)?.name || '';
 
   return (
@@ -232,6 +252,7 @@ function App() {
             onAddRepo={handleAddRepo}
             onSelectRepo={handleSelectRepo}
             onRemoveRepo={handleRemoveRepo}
+            onOpenInEditor={handleOpenInEditor}
           />
         )}
         
@@ -250,7 +271,10 @@ function App() {
           <main>
             {error && <div className="error-message">{error}</div>}
             {repoStatus && !repoStatus.error ? (
-              <Dashboard repoStatus={repoStatus} />
+              <Dashboard 
+                repoStatus={repoStatus} 
+                onOpenFileInEditor={(filePath, lineNumber) => handleOpenFileInEditor(currentRepo, filePath, lineNumber)} 
+              />
             ) : (
               <div className="loading">
                 {repositories.length === 0 

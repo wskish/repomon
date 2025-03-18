@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiPlus, FiGitBranch, FiFolder, FiChevronRight, FiPlusCircle, FiMinusCircle, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiGitBranch, FiFolder, FiChevronRight, FiPlusCircle, FiMinusCircle, FiTrash2, FiCode } from 'react-icons/fi';
 import '../styles/RepoSidebar.css';
 
 const RepoSidebar = ({ 
@@ -7,7 +7,8 @@ const RepoSidebar = ({
   currentRepo, 
   onAddRepo, 
   onSelectRepo, 
-  onRemoveRepo 
+  onRemoveRepo,
+  onOpenInEditor 
 }) => {
   const [menuOpen, setMenuOpen] = useState(null);
 
@@ -58,6 +59,17 @@ const RepoSidebar = ({
                   
                   {menuOpen === repo.path && (
                     <div className="repo-menu">
+                      <button
+                        className="repo-menu-item repo-menu-editor"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(null);
+                          onOpenInEditor && onOpenInEditor(repo.path);
+                        }}
+                      >
+                        <FiCode />
+                        <span>Open in VS Code</span>
+                      </button>
                       <button
                         className="repo-menu-item repo-menu-remove"
                         onClick={(e) => {
