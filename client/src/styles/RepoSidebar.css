@@ -1,0 +1,185 @@
+.repo-sidebar {
+  width: 280px;
+  height: 100%;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.add-repo-btn {
+  background-color: #007acc;
+  color: white;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-repo-btn:hover {
+  background-color: #0062a3;
+}
+
+.repo-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.repo-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.repo-item:hover {
+  background-color: #eaeaea;
+}
+
+.repo-item.active {
+  background-color: #e5f3ff;
+}
+
+.repo-icon {
+  margin-right: 12px;
+  color: #666;
+  font-size: 18px;
+}
+
+.repo-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.repo-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-branch {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.branch-icon {
+  margin-right: 4px;
+}
+
+.repo-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 10px;
+}
+
+.changed-files {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.change-stats {
+  display: flex;
+  align-items: center;
+}
+
+.additions, .deletions {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.additions {
+  color: #28a745;
+}
+
+.deletions {
+  color: #cb2431;
+}
+
+.additions-icon, .deletions-icon {
+  margin-right: 2px;
+}
+
+.remove-repo-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.repo-item:hover .remove-repo-btn {
+  opacity: 1;
+}
+
+.remove-repo-btn:hover {
+  color: #d73a49;
+}
+
+.active-indicator {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #007acc;
+}
+
+.no-repos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  padding: 20px;
+  text-align: center;
+}
+
+.no-repos button {
+  margin-top: 12px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.no-repos button:hover {
+  background-color: #0062a3;
+}

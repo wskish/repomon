@@ -8,7 +8,7 @@ import '../styles/Dashboard.css';
 const Dashboard = ({ repoStatus }) => {
   const [fontSize, setFontSize] = useState(14);
   const dashboardRef = useRef(null);
-  const { files, branch } = repoStatus;
+  const { files } = repoStatus;
 
   // Calculate total changes across all files
   const totalChanges = useMemo(() => {
@@ -58,11 +58,8 @@ const Dashboard = ({ repoStatus }) => {
   return (
     <div className="dashboard" ref={dashboardRef} style={{ fontSize: `${fontSize}px` }}>
       <div className="dashboard-header">
-        <div className="branch-info">
-          <h2>Branch: {branch}</h2>
-          <div className="file-count">
-            {files.length} file{files.length !== 1 ? 's' : ''} changed
-          </div>
+        <div className="file-count">
+          {files.length} file{files.length !== 1 ? 's' : ''} changed
         </div>
         <div className="total-changes">
           {totalChanges.additions > 0 && (
@@ -80,16 +77,22 @@ const Dashboard = ({ repoStatus }) => {
         </div>
       </div>
       
-      <div className="diff-cards-container">
-        {files.map((file) => (
-          <DiffCard
-            key={file.file}
-            file={file}
-            color={getFileTypeColor(file.file)}
-            fontSize={fontSize}
-          />
-        ))}
-      </div>
+      {files.length > 0 ? (
+        <div className="diff-cards-container">
+          {files.map((file) => (
+            <DiffCard
+              key={file.file}
+              file={file}
+              color={getFileTypeColor(file.file)}
+              fontSize={fontSize}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="no-changes-message">
+          No changes detected in this repository
+        </div>
+      )}
     </div>
   );
 };

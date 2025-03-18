@@ -7,15 +7,16 @@ const isDev = process.env.NODE_ENV === 'development';
 
 // Global references
 let mainWindow;
-let gitMonitor;
 let tray = null;
 let windowStateManager;
-let lastRepository = null;
 let recentRepositories = [];
+let activeRepositories = [];
+let gitMonitors = new Map(); // Map of repoPath -> GitMonitor
+let currentRepository = null; // Currently selected repository
 
 /**
  * Enhanced persistent storage (key-value)
- * Includes support for recent repositories
+ * Includes support for repositories management
  */
 const store = {
   get: function(key, defaultValue = null) {
@@ -98,6 +99,108 @@ const store = {
   // Get recent repositories
   getRecentRepositories: function() {
     return this.get('recentRepositories', []);
+  },
+  
+  // Get active repositories
+  getActiveRepositories: function() {
+    return this.get('activeRepositories', []);
+  },
+  
+  // Save active repositories
+  saveActiveRepositories: function(repos) {
+    this.set('activeRepositories', repos);
+    activeRepositories = repos;
+    return repos;
+  },
+  
+  // Add active repository
+  addActiveRepository: function(repoPath) {
+    try {
+      if (!repoPath) return;
+      
+      // Get current active repositories
+      let repos = this.getActiveRepositories();
+      
+      // Check if already exists
+      if (repos.some(repo => repo.path === repoPath)) {
+        console.log(`Repository ${repoPath} already active`);
+        return repos;
+      }
+      
+      // Add to array
+      repos.push({
+        path: repoPath,
+        name: path.basename(repoPath),
+        added: new Date().toISOString()
+      });
+      
+      // Save back to config
+      this.saveActiveRepositories(repos);
+      
+      // Also add to recent repos
+      this.addRecentRepository(repoPath);
+      
+      return repos;
+    } catch (err) {
+      console.error('Error adding active repository:', err);
+      return [];
+    }
+  },
+  
+  // Remove active repository
+  removeActiveRepository: function(repoPath) {
+    try {
+      // Get current active repositories
+      let repos = this.getActiveRepositories();
+      
+      // Remove repository
+      repos = repos.filter(repo => repo.path !== repoPath);
+      
+      // Save back to config
+      this.saveActiveRepositories(repos);
+      
+      return repos;
+    } catch (err) {
+      console.error('Error removing active repository:', err);
+      return [];
+    }
+  },
+  
+  // Update repository stats
+  updateRepositoryStats: function(repoPath, stats) {
+    try {
+      // Get current active repositories
+      let repos = this.getActiveRepositories();
+      
+      // Find and update repository
+      const index = repos.findIndex(repo => repo.path === repoPath);
+      if (index >= 0) {
+        repos[index] = {
+          ...repos[index],
+          ...stats,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        // Save back to config
+        this.saveActiveRepositories(repos);
+      }
+      
+      return repos;
+    } catch (err) {
+      console.error('Error updating repository stats:', err);
+      return [];
+    }
+  },
+  
+  // Set current repository
+  setCurrentRepository: function(repoPath) {
+    this.set('currentRepository', repoPath);
+    currentRepository = repoPath;
+  },
+  
+  // Get current repository
+  getCurrentRepository: function() {
+    return this.get('currentRepository', null);
   }
 };
 
@@ -173,26 +276,24 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
   
-  // Initialize repository from saved config or show picker
+  // Initialize repositories from saved config
   try {
-    // Load last repository
-    lastRepository = store.get('lastRepository');
-    console.log('Last repository:', lastRepository);
-    
     // Load recent repositories list
     recentRepositories = store.getRecentRepositories();
     console.log(`Loaded ${recentRepositories.length} recent repositories`);
     
-    if (lastRepository && lastRepository.path) {
-      setTimeout(() => {
-        initRepository(lastRepository.path);
-      }, 1000);
-    } else {
-      // Wait for app to be ready before showing dialog
-      setTimeout(() => {
-        openRepositoryDialog();
-      }, 1000);
-    }
+    // Initialize repositories
+    setTimeout(() => {
+      initializeRepositories().then(() => {
+        // If no active repositories, prompt to add one
+        if (activeRepositories.length === 0) {
+          console.log('No active repositories found, showing repository picker');
+          setTimeout(() => {
+            openRepositoryDialog();
+          }, 500);
+        }
+      });
+    }, 1000);
   } catch (err) {
     console.error('Error loading repository data:', err);
   }
@@ -208,56 +309,192 @@ function createWindow() {
 }
 
 /**
- * Initialize repository monitoring
+ * Initialize repositories monitoring
  */
-async function initRepository(repoPath) {
+async function initializeRepositories() {
+  console.log('Initializing repositories...');
+  
+  try {
+    // Load active repositories
+    activeRepositories = store.getActiveRepositories();
+    
+    // Load current repository
+    currentRepository = store.getCurrentRepository();
+    
+    // If no active repos, try to use last repository from old config
+    if (activeRepositories.length === 0) {
+      const lastRepo = store.get('lastRepository');
+      if (lastRepo && lastRepo.path) {
+        console.log(`Migrating last repository ${lastRepo.path} to active repositories`);
+        activeRepositories = store.addActiveRepository(lastRepo.path);
+        currentRepository = lastRepo.path;
+        store.setCurrentRepository(lastRepo.path);
+      }
+    }
+    
+    // If still no active repos, we'll prompt user later
+    if (activeRepositories.length === 0) {
+      console.log('No active repositories found');
+      return;
+    }
+    
+    // Start monitoring all active repositories
+    for (const repo of activeRepositories) {
+      await startMonitoringRepository(repo.path);
+    }
+    
+    // If no current repository is set but we have active ones, use the first
+    if (!currentRepository && activeRepositories.length > 0) {
+      currentRepository = activeRepositories[0].path;
+      store.setCurrentRepository(currentRepository);
+    }
+    
+    // Send the list of active repositories to renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('active-repositories', activeRepositories);
+      
+      // If we have a current repository, send its status
+      if (currentRepository) {
+        mainWindow.webContents.send('current-repository', currentRepository);
+        
+        // Update window title
+        mainWindow.setTitle(`Repomon - ${path.basename(currentRepository)}`);
+        
+        // Request initial status for current repo
+        const monitor = gitMonitors.get(currentRepository);
+        if (monitor) {
+          const status = await monitor.getStatus();
+          mainWindow.webContents.send('repo-status', status);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error initializing repositories:', err);
+  }
+}
+
+/**
+ * Start monitoring a repository
+ */
+async function startMonitoringRepository(repoPath) {
   if (!repoPath) {
     console.error('No repository path provided');
     return;
   }
   
-  console.log(`Initializing repository at: ${repoPath}`);
+  // Skip if already monitoring
+  if (gitMonitors.has(repoPath)) {
+    console.log(`Already monitoring ${repoPath}`);
+    return;
+  }
+  
+  console.log(`Starting to monitor repository at: ${repoPath}`);
   
   try {
-    // Stop current monitor if any
-    if (gitMonitor) {
-      gitMonitor.stopMonitoring();
-    }
-    
     // Create new monitor
-    gitMonitor = new GitMonitor(repoPath);
+    const gitMonitor = new GitMonitor(repoPath);
     
     // Wait a bit for the git repo check to complete
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Start monitoring
     await gitMonitor.startMonitoring((status) => {
+      // Update repository stats
+      const additions = status.files?.reduce((sum, file) => {
+        // Extract additions/deletions stats to update repo summary
+        const lines = file.diff.split('\n');
+        const addedLines = lines.filter(line => line.startsWith('+') && !line.startsWith('+++')).length;
+        const deletedLines = lines.filter(line => line.startsWith('-') && !line.startsWith('---')).length;
+        return sum + addedLines;
+      }, 0) || 0;
+      
+      const deletions = status.files?.reduce((sum, file) => {
+        const lines = file.diff.split('\n');
+        const deletedLines = lines.filter(line => line.startsWith('-') && !line.startsWith('---')).length;
+        return sum + deletedLines;
+      }, 0) || 0;
+      
+      // Update repository stats
+      store.updateRepositoryStats(repoPath, {
+        branch: status.branch,
+        changedFiles: status.files?.length || 0,
+        additions,
+        deletions
+      });
+      
+      // Send updated repositories list
+      const updatedRepos = store.getActiveRepositories();
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('repo-status', status);
+        mainWindow.webContents.send('active-repositories', updatedRepos);
+        
+        // If this is the current repository, send its status
+        if (currentRepository === repoPath) {
+          mainWindow.webContents.send('repo-status', status);
+        }
       }
     });
     
-    // Save as last used repository
-    store.set('lastRepository', { path: repoPath });
-    lastRepository = { path: repoPath };
+    // Store the monitor
+    gitMonitors.set(repoPath, gitMonitor);
+    
+    // Make sure it's in the active repositories list
+    store.addActiveRepository(repoPath);
     
     // Add to recent repositories
     store.addRecentRepository(repoPath);
     
-    // Send path to renderer
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('repo-path', repoPath);
-      mainWindow.setTitle(`Repomon - ${path.basename(repoPath)}`);
-    }
+    return gitMonitor;
   } catch (err) {
-    console.error('Error initializing repository:', err);
+    console.error(`Error monitoring repository ${repoPath}:`, err);
     
     // Notify renderer of the error
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('repo-error', {
-        error: `Failed to initialize repository: ${err.message}`
+        repoPath,
+        error: `Failed to monitor repository: ${err.message}`
       });
     }
+    
+    throw err;
+  }
+}
+
+/**
+ * Stop monitoring a repository
+ */
+function stopMonitoringRepository(repoPath) {
+  if (gitMonitors.has(repoPath)) {
+    console.log(`Stopping monitoring for ${repoPath}`);
+    const monitor = gitMonitors.get(repoPath);
+    monitor.stopMonitoring();
+    gitMonitors.delete(repoPath);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Set the current repository
+ */
+async function setCurrentRepository(repoPath) {
+  // Make sure repository is monitored
+  if (!gitMonitors.has(repoPath)) {
+    await startMonitoringRepository(repoPath);
+  }
+  
+  // Set as current
+  currentRepository = repoPath;
+  store.setCurrentRepository(repoPath);
+  
+  // Get status
+  const monitor = gitMonitors.get(repoPath);
+  const status = await monitor.getStatus();
+  
+  // Update UI
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('current-repository', repoPath);
+    mainWindow.webContents.send('repo-status', status);
+    mainWindow.setTitle(`Repomon - ${path.basename(repoPath)}`);
   }
 }
 
@@ -277,8 +514,24 @@ async function openRepositoryDialog() {
     });
     
     if (!canceled && filePaths.length > 0) {
-      initRepository(filePaths[0]);
-      return filePaths[0];
+      const repoPath = filePaths[0];
+      
+      try {
+        // Start monitoring the new repository
+        await startMonitoringRepository(repoPath);
+        
+        // Set as the current repository
+        await setCurrentRepository(repoPath);
+        
+        return repoPath;
+      } catch (err) {
+        console.error(`Error adding repository ${repoPath}:`, err);
+        
+        dialog.showErrorBox(
+          'Repository Error',
+          `Failed to add repository: ${err.message}`
+        );
+      }
     }
   } catch (error) {
     console.error('Error showing directory picker:', error);
@@ -467,17 +720,97 @@ ipcMain.handle('get-recent-repositories', () => {
   return store.getRecentRepositories();
 });
 
-// Get repository status on demand
-ipcMain.handle('get-status', async () => {
-  if (gitMonitor) {
-    return await gitMonitor.getStatus();
-  }
-  return { error: 'No repository initialized' };
+// Get active repositories list
+ipcMain.handle('get-active-repositories', () => {
+  return store.getActiveRepositories();
 });
 
-// Get repository path on demand
-ipcMain.handle('get-repo-path', () => {
-  return lastRepository ? lastRepository.path : null;
+// Add repository
+ipcMain.handle('add-repository', async (event, repoPath) => {
+  try {
+    // If a dialog is requested
+    if (!repoPath) {
+      return await openRepositoryDialog();
+    }
+    
+    // Otherwise use the provided path
+    await startMonitoringRepository(repoPath);
+    await setCurrentRepository(repoPath);
+    return { success: true, path: repoPath };
+  } catch (err) {
+    console.error('Error adding repository:', err);
+    return { error: err.message };
+  }
+});
+
+// Remove repository
+ipcMain.handle('remove-repository', (event, repoPath) => {
+  try {
+    // Stop monitoring
+    stopMonitoringRepository(repoPath);
+    
+    // Remove from active repositories
+    store.removeActiveRepository(repoPath);
+    
+    // If this was the current repository, select another one
+    if (currentRepository === repoPath) {
+      const repos = store.getActiveRepositories();
+      if (repos.length > 0) {
+        setCurrentRepository(repos[0].path);
+      } else {
+        currentRepository = null;
+        
+        // Notify renderer that there's no current repository
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('current-repository', null);
+          mainWindow.webContents.send('repo-status', { error: 'No repository selected' });
+          mainWindow.setTitle('Repomon');
+        }
+      }
+    }
+    
+    // Send updated repositories list
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('active-repositories', store.getActiveRepositories());
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error('Error removing repository:', err);
+    return { error: err.message };
+  }
+});
+
+// Set current repository
+ipcMain.handle('set-current-repository', async (event, repoPath) => {
+  try {
+    await setCurrentRepository(repoPath);
+    return { success: true };
+  } catch (err) {
+    console.error('Error setting current repository:', err);
+    return { error: err.message };
+  }
+});
+
+// Get current repository
+ipcMain.handle('get-current-repository', () => {
+  return currentRepository;
+});
+
+// Get repository status on demand
+ipcMain.handle('get-status', async (event, repoPath) => {
+  const targetRepo = repoPath || currentRepository;
+  
+  if (!targetRepo) {
+    return { error: 'No repository selected' };
+  }
+  
+  const monitor = gitMonitors.get(targetRepo);
+  if (monitor) {
+    return await monitor.getStatus();
+  }
+  
+  return { error: 'Repository not monitored' };
 });
 
 // Initialize application

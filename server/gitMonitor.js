@@ -5,6 +5,27 @@ const path = require('path');
 const fs = require('fs');
 
 class GitMonitor {
+  // Parse diff stats from raw diff output
+  parseDiffStats(diffText) {
+    if (!diffText) return { additions: 0, deletions: 0 };
+    
+    let additions = 0;
+    let deletions = 0;
+    
+    // Split diff by lines
+    const lines = diffText.split('\n');
+    
+    // Count additions and deletions
+    for (const line of lines) {
+      if (line.startsWith('+') && !line.startsWith('+++')) {
+        additions++;
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        deletions++;
+      }
+    }
+    
+    return { additions, deletions };
+  }
   constructor(repoPath) {
     this.repoPath = repoPath;
     this.git = simpleGit(repoPath);

@@ -1,11 +1,13 @@
-# Repomon: Real-time Repository Change Visualization
+# Repomon: Multi-Repository Change Visualization
 
-Repomon is a tool that provides real-time visualization of changes in your Git repository with a side-by-side diff view. It's perfect for monitoring active development and seeing changes as they happen.
+Repomon is a tool that provides real-time visualization of changes in multiple Git repositories with a side-by-side diff view. It's perfect for monitoring active development across various projects and seeing changes as they happen.
 
 ## Key Features
 
-- **Real-time monitoring** of your Git repository
+- **Multi-repository monitoring** to track changes across multiple projects
+- **Real-time updates** for all monitored repositories
 - **Side-by-side diff view** in responsive cards
+- **Repository sidebar** with at-a-glance change summaries
 - **Dynamic layout** that adjusts to window size
 - **Auto-scaling font size** based on number of changed files
 - **File type color coding** for better visual organization
