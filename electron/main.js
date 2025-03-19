@@ -233,7 +233,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     },
-    icon: path.join(__dirname, '../assets/icons/icon.png'),
+    icon: path.join(__dirname, '../assets/icons/repomon.png'),
     title: 'Repomon',
     show: false  // Don't show until ready
   });
@@ -256,7 +256,7 @@ function createWindow() {
   
   if (isDev) {
     // Development mode - always use the React dev server
-    startUrl = 'http://localhost:3000';
+    startUrl = 'http://localhost:3333';
   } else {
     // Production mode - check if build exists, otherwise fall back to dev server
     const buildPath = path.join(__dirname, '../build/index.html');
@@ -264,7 +264,7 @@ function createWindow() {
       startUrl = `file://${buildPath}`;
     } else {
       console.warn('Production build not found, falling back to development server');
-      startUrl = 'http://localhost:3000';
+      startUrl = 'http://localhost:3333';
     }
   }
   
@@ -595,7 +595,7 @@ function createTray() {
     
     // Try to load tray icon
     let trayIcon;
-    const trayIconPath = path.join(__dirname, '../assets/icons/tray-icon.png');
+    const trayIconPath = path.join(__dirname, '../assets/icons/tray-icon-custom.png');
     
     try {
       if (fs.existsSync(trayIconPath)) {
@@ -875,6 +875,15 @@ app.whenReady().then(() => {
   console.log("Electron app is ready!");
   
   try {
+    // Set custom dock icon for macOS in development mode
+    if (process.platform === 'darwin') {
+      const iconPath = path.join(__dirname, '../assets/icons/repomon.png');
+      if (fs.existsSync(iconPath)) {
+        console.log('Setting custom dock icon for macOS');
+        app.dock.setIcon(nativeImage.createFromPath(iconPath));
+      }
+    }
+    
     // Create window and UI components
     createWindow();
     createTray();

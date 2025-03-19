@@ -112,14 +112,14 @@ case "$MODE" in
     export BROWSER=none
     npx concurrently \
       "cd client && npm start" \
-      "npx wait-on http://localhost:3000 && NODE_ENV=development electron ."
+      "npx wait-on http://localhost:3333 && NODE_ENV=development electron ."
     ;;
   "electron-debug")
     echo "Running in Electron debug mode..."
     export BROWSER=none
     DEBUG=electron,electron:* NODE_ENV=development npx concurrently \
       "cd client && npm start" \
-      "npx wait-on http://localhost:3000 && npx electron --trace-warnings ."
+      "npx wait-on http://localhost:3333 && npx electron --trace-warnings ."
     ;;
   *)
     echo "Error: Unknown mode '$MODE'"

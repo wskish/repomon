@@ -33,7 +33,7 @@ const start = async () => {
   try {
     // Wait for React dev server to start
     await waitOn({
-      resources: ['http-get://localhost:3000'],
+      resources: ['http-get://localhost:3333'],
       timeout: 60000,
     });
 

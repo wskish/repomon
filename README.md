@@ -1,5 +1,9 @@
 # Repomon: Multi-Repository Change Visualization
 
+<p align="center">
+  <img src="assets/icons/repomon.png" alt="Repomon Logo" width="200" height="200">
+</p>
+
 Repomon is a tool that provides real-time visualization of changes in multiple Git repositories with a side-by-side diff view. It's perfect for monitoring active development across various projects and seeing changes as they happen.
 
 ## Key Features
@@ -34,7 +38,7 @@ Repomon is a tool that provides real-time visualization of changes in multiple G
    npm run dev
    ```
 
-4. Access the web interface at `http://localhost:3000`
+4. Access the web interface at `http://localhost:3333`
 
 ### Desktop App (Electron)
 
@@ -75,7 +79,7 @@ Repomon is a tool that provides real-time visualization of changes in multiple G
    ```
    If no path is provided, it will monitor the current directory.
 
-2. Access the web interface at `http://localhost:3000`
+2. Access the web interface at `http://localhost:3333`
 
 ### Desktop App
 
