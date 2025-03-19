@@ -4,7 +4,8 @@
   <img src="assets/icons/repomon.png" alt="Repomon Logo" width="200" height="200">
 </p>
 
-Repomon is a tool that provides real-time visualization of changes in multiple Git repositories with a side-by-side diff view. It's perfect for monitoring active development across various projects and seeing changes as they happen.
+Repomon is a tool that provides real-time visualization of changes in multiple Git repositories with a side-by-side diff view. It's perfect for keeping an eye on claude code or other agents as they ransack your repository.
+
 
 ## Key Features
 
